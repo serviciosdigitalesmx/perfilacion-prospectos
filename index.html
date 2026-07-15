@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Talleres de Reparación - Directorio Nacional</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      background: #f0f4f8;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #1a3a5c;
+      border-bottom: 3px solid #2a7de1;
+      padding-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .search-box {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+    .search-box input {
+      flex: 1;
+      padding: 12px 18px;
+      border: 1px solid #c0cbd8;
+      border-radius: 8px;
+      font-size: 16px;
+      min-width: 220px;
+      background: white;
+    }
+    .search-box input:focus {
+      outline: 2px solid #2a7de1;
+      border-color: transparent;
+    }
+    .search-box button {
+      padding: 12px 28px;
+      background: #2a7de1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s;
+    }
+    .search-box button:hover {
+      background: #1a5fb0;
+    }
+    .search-box button:active {
+      transform: scale(0.97);
+    }
+    .search-box .clear-btn {
+      background: #6c7a8a;
+    }
+    .search-box .clear-btn:hover {
+      background: #4a5a6a;
+    }
+    .stats {
+      margin-bottom: 15px;
+      color: #2c3e50;
+      font-weight: 500;
+    }
+    .table-wrapper {
+      max-height: 650px;
+      overflow-y: auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      background: white;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th {
+      background: #1a3a5c;
+      color: white;
+      padding: 14px 12px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e9ecf0;
+      vertical-align: top;
+    }
+    tr:hover {
+      background: #f5f9ff;
+    }
+    .no-results {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+      font-size: 18px;
+    }
+    .loading {
+      text-align: center;
+      padding: 30px;
+      color: #2a7de1;
+      font-size: 18px;
+    }
+    .error {
+      text-align: center;
+      padding: 30px;
+      color: #d32f2f;
+      font-size: 18px;
+    }
+    @media (max-width: 768px) {
+      th, td {
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+      .search-box input {
+        font-size: 14px;
+        padding: 10px 14px;
+      }
+      .search-box button {
+        padding: 10px 18px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>📱 Talleres de Reparación (Alta confianza nacional)</h1>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Buscar por nombre, municipio, localidad, calle, teléfono...">
+    <button id="searchBtn">🔍 Buscar</button>
+    <button id="clearBtn" class="clear-btn">✕ Limpiar</button>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Teléfono</th>
+          <th>Entidad</th>
+          <th>Municipio</th>
+          <th>Localidad</th>
+          <th>Dirección</th>
+          <th>Actividad</th>
+        </tr>
+      </thead>
+      <tbody id="resultsBody">
+        <tr><td colspan="7" class="loading">⏳ Cargando datos...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  //  CONFIGURACIÓN - CAMBIA ESTA URL POR LA DE TU APPS SCRIPT
+  // ============================================================
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqwFneV1aBz7nHHQKjmZ1gdu3RzXbxli8_VTU1UhQp-ZCCxsIxmeXKZ_b1pBIlxkwMUg/exec'; // <--- REEMPLAZA
+
+  const searchInput = document.getElementById('searchInput');
+  const searchBtn = document.getElementById('searchBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const resultsBody = document.getElementById('resultsBody');
+  const stats = document.getElementById('stats');
+
+  // Función para realizar la búsqueda
+  async function fetchData(query = '') {
+    resultsBody.innerHTML = `<tr><td colspan="7" class="loading">⏳ Buscando...</td></tr>`;
+    stats.textContent = '';
+
+    try {
+      const url = `${SCRIPT_URL}?action=search&q=${encodeURIComponent(query)}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Error en la solicitud (HTTP ' + response.status + ')');
+
+      const data = await response.json();
+      renderResults(data);
+    } catch (err) {
+      resultsBody.innerHTML = `<tr><td colspan="7" class="error">❌ ${err.message}</td></tr>`;
+      console.error('Error:', err);
+    }
+  }
+
+  // Renderiza la tabla con los resultados
+  function renderResults(records) {
+    if (!records || records.length === 0) {
+      resultsBody.innerHTML = `<tr><td colspan="7" class="no-results">😕 No se encontraron talleres</td></tr>`;
+      stats.textContent = '0 resultados';
+      return;
+    }
+
+    stats.textContent = `📌 ${records.length} resultados encontrados`;
+
+    let html = '';
+    records.forEach(item => {
+      const nombre = item['Nombre del establecimiento'] || 'Sin nombre';
+      const telefono = item['Teléfono'] || '';
+      const entidad = item['Entidad'] || '';
+      const municipio = item['Municipio'] || '';
+      const localidad = item['Localidad'] || '';
+      const direccion = item['Dirección'] || '';
+      const actividad = item['Actividad económica'] || '';
+
+      html += `<tr>
+        <td><strong>${escapeHtml(nombre)}</strong></td>
+        <td>${escapeHtml(telefono)}</td>
+        <td>${escapeHtml(entidad)}</td>
+        <td>${escapeHtml(municipio)}</td>
+        <td>${escapeHtml(localidad)}</td>
+        <td>${escapeHtml(direccion)}</td>
+        <td>${escapeHtml(actividad)}</td>
+      </tr>`;
+    });
+    resultsBody.innerHTML = html;
+  }
+
+  // Escapar HTML para evitar inyección
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Eventos
+  searchBtn.addEventListener('click', () => {
+    const query = searchInput.value.trim();
+    fetchData(query);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    fetchData('');
+  });
+
+  searchInput.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') searchBtn.click();
+  });
+
+  // Carga inicial: mostrar todos los registros
+  fetchData('');
+</script>
+</body>
+</html>
