@@ -1,7 +1,17 @@
+"use client";
 import { useProspeccion } from '../hooks/useProspeccion';
 
 export const TarjetaProspeccion = ({ tallerId }: { tallerId: string }) => {
-  const { currentNode, tree, handleResponse } = useProspeccion(tallerId);
+  const { currentNode, tree, handleResponse, errorLog } = useProspeccion(tallerId);
+
+  if (errorLog) {
+    return (
+      <div className="p-8 bg-red-950 border border-red-500 rounded-xl shadow-2xl max-w-md mx-auto">
+        <h2 className="text-xl font-bold text-white mb-2">Error de Conexión 🚨</h2>
+        <p className="text-red-200 font-mono text-sm">{errorLog}</p>
+      </div>
+    );
+  }
 
   if (!currentNode) return <div className="text-white p-4">Cargando guion...</div>;
 
